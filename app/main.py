@@ -41,8 +41,12 @@ async def root():
 async def health():
     return {"status": "healthy", "timestamp": "2024"}
 
+
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()  # agora roda dentro do loop do FastAPI
+
 if __name__ == "__main__":
-    start_scheduler()
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
@@ -50,3 +54,4 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
