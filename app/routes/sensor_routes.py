@@ -8,11 +8,11 @@ import logging
 router = APIRouter(prefix="/api/v1/sensors", tags=["Sensors"])
 logger = logging.getLogger(__name__)
 
-# Instância global do serviço ThingSpeak
+
 thingspeak_service = ThingspeakService()
 
 
-# 🚀 Endpoint principal de ingestão de dados (vindo do ESP32)
+
 @router.post("/ingest")
 async def ingest_data(
     reading: SensorReading,
@@ -47,7 +47,7 @@ async def ingest_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 🧪 Endpoint de teste manual do ThingSpeak
+
 @router.get("/test_thingspeak")
 async def test_thingspeak(
     temperature: float = Query(..., description="Temperatura de teste"),
