@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import auth_routes, sensor_routes
 from app.core.database import init_db
-from app.utils.scheduler import start_scheduler
+#from app.utils.scheduler import start_scheduler
 from app.core.config import settings
 import uvicorn
 import logging
@@ -42,9 +42,9 @@ async def health():
     return {"status": "healthy", "timestamp": "2024"}
 
 
-@app.on_event("startup")
-async def startup_event():
-    start_scheduler()  # agora roda dentro do loop do FastAPI
+# @app.on_event("startup")
+# async def startup_event():
+#     start_scheduler()  # agora roda dentro do loop do FastAPI
 
 if __name__ == "__main__":
     uvicorn.run(
