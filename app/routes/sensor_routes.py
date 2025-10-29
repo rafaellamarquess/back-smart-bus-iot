@@ -3,9 +3,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.database import get_db
 from app.models.sensor import SensorReading, SensorReadingCreate
 from app.services.thingspeak_service import ThingspeakService
+from app.processors.etl_pipeline import SensorETLPipeline, MongoDataRepository
 import logging
 from datetime import datetime
-from bson import ObjectId
 
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
 logger = logging.getLogger(__name__)
@@ -31,22 +31,45 @@ async def ingest_data(
         raise HTTPException(status_code=401, detail="Chave IoT inválida.")
 
     try:
-        # Criar documento completo para salvar
-        sensor_data = reading.dict()
-        sensor_data["recorded_at"] = datetime.utcnow()
+        # 🆕 NOVO: Pipeline ETL para processamento avançado dos dados
+        repository = MongoDataRepository(db)
+        etl_pipeline = SensorETLPipeline(repository)
         
-        # Salva leitura no MongoDB
-        result = await db.sensor_readings.insert_one(sensor_data)
-        logger.info(f"📥 Sensor data saved: {result.inserted_id}")
+        # Executar pipeline ETL completo (validação, transformação, limpeza)
+        etl_result = await etl_pipeline.execute(reading.dict())
+        
+        if not etl_result['success']:
+            logger.error(f"❌ Falha no pipeline ETL: {etl_result.get('error')}")
+            # Fallback: salvar dados básicos mesmo se ETL falhar
+            sensor_data = reading.dict()
+            sensor_data["recorded_at"] = datetime.utcnow()
+            result = await db.sensor_readings.insert_one(sensor_data)
+            document_id = str(result.inserted_id)
+        else:
+            document_id = etl_result['document_id']
+            logger.info(f"✅ Pipeline ETL executado com sucesso. Score: {etl_result.get('data_quality_score', 0)}")
 
-        # Envia dados ao ThingSpeak
+        # Continuar com ThingSpeak (funcionalidade original mantida)
         await thingspeak_service.send_data(
             temperature=reading.temperature,
             humidity=reading.humidity
         )
 
         logger.info("✅ Dados enviados ao ThingSpeak com sucesso.")
-        return {"status": "ok", "id": str(result.inserted_id)}
+        
+        # 🆕 NOVO: Resposta enriquecida com informações do pipeline ETL
+        response = {
+            "status": "ok", 
+            "id": document_id,
+            "etl_pipeline": {
+                "executed": etl_result['success'],
+                "data_quality_score": etl_result.get('data_quality_score', 0),
+                "outliers_detected": etl_result.get('outliers_detected', {}),
+                "processed_fields": etl_result.get('processed_fields', {})
+            }
+        }
+        
+        return response
 
     except Exception as e:
         logger.error(f"❌ Erro ao processar dados do sensor: {e}")

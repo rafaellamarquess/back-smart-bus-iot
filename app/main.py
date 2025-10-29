@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth_routes, sensor_routes
+from app.routes import auth_routes, sensor_routes, analytics_routes
 from app.core.database import init_db
 #from app.utils.scheduler import start_scheduler
 from app.core.config import settings
@@ -32,6 +32,7 @@ init_db()
 # Rotas
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(sensor_routes.router, prefix="/api")
+app.include_router(analytics_routes.router, prefix="/api")
 
 @app.get("/")
 async def root():
