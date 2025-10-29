@@ -30,17 +30,12 @@ app.add_middleware(
 init_db()
 
 # Rotas
-app.include_router(auth_routes.router, prefix="/api/v1")
-app.include_router(sensor_routes.router, prefix="/api/v1")
+app.include_router(auth_routes.router, prefix="/api")
+app.include_router(sensor_routes.router, prefix="/api")
 
 @app.get("/")
 async def root():
     return {"message": "Smart Bus Stop API 🚌"}
-
-@app.get("/health")
-async def health():
-    return {"status": "healthy", "timestamp": "2024"}
-
 
 # @app.on_event("startup")
 # async def startup_event():
