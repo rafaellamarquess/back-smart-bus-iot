@@ -7,7 +7,6 @@ import logging
 router = APIRouter(prefix="/thingspeak", tags=["ThingSpeak Integration"])
 logger = logging.getLogger(__name__)
 
-# Instância global do consumer para controlar estado
 _consumer_instance = None
 
 @router.get("/save-data")
@@ -130,25 +129,42 @@ async def test_thingspeak_connection(
     try:
         consumer = ThingSpeakConsumerService(db)
         data = await consumer.thingspeak_service.fetch_latest_data(results)
-        
+
         if not data:
             return {
                 "status": "no_data",
                 "message": "Conexão OK, mas nenhum dado encontrado no canal",
                 "records_found": 0
             }
-        
-        # Mostrar apenas uma amostra dos dados sem processar
-        sample_data = data
+
+        # Salvar cada registro no MongoDB via pipeline ETL
+        processed_count = 0
+        errors = []
+        for item in data:
+            try:
+                etl_result = await consumer.etl_pipeline.execute(item)
+                if etl_result['success']:
+                    processed_count += 1
+                else:
+                    errors.append(f"ETL falhou para entry_id {item.get('entry_id')}: {etl_result.get('error')}")
+            except Exception as e:
+                errors.append(f"Erro ao processar entry_id {item.get('entry_id')}: {str(e)}")
+
+        # Atualizar estado se processou dados
+        if processed_count > 0 and data:
+            max_entry_id = max(item.get("entry_id", 0) for item in data)
+            await consumer.save_last_processed_entry_id(max_entry_id)
 
         return {
             "status": "success",
-            "message": "Conexão com ThingSpeak funcionando",
+            "message": "Conexão com ThingSpeak funcionando e dados salvos no MongoDB",
             "records_found": len(data),
-            "sample_data": sample_data,
+            "processed": processed_count,
+            "errors": errors[:10],
+            "sample_data": data,
             "latest_entry_id": max(item.get("entry_id", 0) for item in data) if data else 0
         }
-        
+
     except Exception as e:
         logger.error(f"Erro ao testar conexão ThingSpeak: {e}")
         raise HTTPException(status_code=500, detail=str(e))
