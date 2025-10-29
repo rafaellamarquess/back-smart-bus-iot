@@ -101,19 +101,3 @@ async def get_sensor_readings(
     except Exception as e:
         logger.error(f"❌ Erro ao buscar leituras: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/debug/api-key")
-async def debug_api_key(iot_api_key: str = Header(None)):
-    """
-    Endpoint de debug para verificar a chave IoT configurada e recebida.
-    """
-    from app.core.config import settings
-    
-    return {
-        "expected_key": settings.iot_api_key,
-        "received_key": iot_api_key,
-        "keys_match": iot_api_key == settings.iot_api_key,
-        "received_key_length": len(iot_api_key) if iot_api_key else 0,
-        "expected_key_length": len(settings.iot_api_key)
-    }
