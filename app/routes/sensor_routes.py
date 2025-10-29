@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.database import get_db
-from app.models.sensor import SensorReading
+from app.models.sensor import SensorReading, SensorReadingCreate
 from app.services.thingspeak_service import ThingspeakService
 import logging
+from datetime import datetime
+from bson import ObjectId
 
-router = APIRouter(prefix="/api/v1/sensors", tags=["Sensors"])
+router = APIRouter(prefix="/sensors", tags=["Sensors"])
 logger = logging.getLogger(__name__)
 
 
@@ -15,22 +17,26 @@ thingspeak_service = ThingspeakService()
 
 @router.post("/ingest")
 async def ingest_data(
-    reading: SensorReading,
+    reading: SensorReadingCreate,
     db: AsyncIOMotorDatabase = Depends(get_db),
-    x_api_key: str = Header(None)
+    iot_api_key: str = Header(None)
 ):
     """
     Recebe dados do sensor, salva no MongoDB e envia ao ThingSpeak.
-    Exige o cabeçalho: X-API-Key
+    Exige o cabeçalho com a chave IoT válida.
     """
     # Verificação simples da chave IoT (substitua por uma função se quiser)
     from app.core.config import settings
-    if x_api_key != settings.iot_api_key:
+    if iot_api_key != settings.iot_api_key:
         raise HTTPException(status_code=401, detail="Chave IoT inválida.")
 
     try:
+        # Criar documento completo para salvar
+        sensor_data = reading.dict()
+        sensor_data["recorded_at"] = datetime.utcnow()
+        
         # Salva leitura no MongoDB
-        result = await db.sensor_readings.insert_one(reading.dict())
+        result = await db.sensor_readings.insert_one(sensor_data)
         logger.info(f"📥 Sensor data saved: {result.inserted_id}")
 
         # Envia dados ao ThingSpeak
@@ -57,7 +63,7 @@ async def test_thingspeak(
     Envia manualmente uma leitura ao ThingSpeak para teste.
 
     Exemplo:
-    GET /api/v1/sensors/test_thingspeak?temperature=25.6&humidity=80
+    GET /api/sensors/test_thingspeak?temperature=25.6&humidity=80
     """
     try:
         success = await thingspeak_service.send_data(temperature, humidity)
@@ -72,3 +78,42 @@ async def test_thingspeak(
     except Exception as e:
         logger.error(f"❌ Erro no teste do ThingSpeak: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/readings")
+async def get_sensor_readings(
+    limit: int = Query(10, description="Número de leituras a retornar"),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """
+    Retorna as últimas leituras dos sensores.
+    """
+    try:
+        cursor = db.sensor_readings.find().sort("recorded_at", -1).limit(limit)
+        readings = []
+        async for doc in cursor:
+            doc["id"] = str(doc["_id"])
+            del doc["_id"]
+            readings.append(doc)
+        
+        return {"readings": readings, "count": len(readings)}
+    
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar leituras: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/debug/api-key")
+async def debug_api_key(iot_api_key: str = Header(None)):
+    """
+    Endpoint de debug para verificar a chave IoT configurada e recebida.
+    """
+    from app.core.config import settings
+    
+    return {
+        "expected_key": settings.iot_api_key,
+        "received_key": iot_api_key,
+        "keys_match": iot_api_key == settings.iot_api_key,
+        "received_key_length": len(iot_api_key) if iot_api_key else 0,
+        "expected_key_length": len(settings.iot_api_key)
+    }

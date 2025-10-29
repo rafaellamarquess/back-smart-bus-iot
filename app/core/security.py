@@ -29,9 +29,9 @@ async def get_current_user(token: str):
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-async def verify_iot_key(x_api_key: str = Header(None)):
+async def verify_iot_key(iot_api_key: str = Header(None)):
     """Verifica chave IoT para ESP32"""
-    if x_api_key != settings.iot_api_key:
+    if iot_api_key != settings.iot_api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid IoT API key"

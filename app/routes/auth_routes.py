@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
-from app.schemas.user import Token, UserCreate
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.schemas.user import Token, UserCreate, UserLogin
 from app.crud.users import create_user, authenticate_user
 from app.core.database import get_db
 from app.core.security import create_access_token
@@ -18,9 +18,9 @@ async def register(user: UserCreate, db: motor.motor_asyncio.AsyncIOMotorDatabas
     return {"msg": "User created", "user_id": user_id}
 
 @router.post("/login", response_model=Token)
-async def login(email: str = Form(), password: str = Form(), db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
+async def login(user_login: UserLogin, db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
     """Login do usuário"""
-    user = await authenticate_user(db["users"], email, password)
+    user = await authenticate_user(db["users"], user_login.email, user_login.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 

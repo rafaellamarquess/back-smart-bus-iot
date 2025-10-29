@@ -10,6 +10,10 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str] = None
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
