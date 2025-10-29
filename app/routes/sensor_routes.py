@@ -56,8 +56,8 @@ async def ingest_data(
 
 @router.get("/test_thingspeak")
 async def test_thingspeak(
-    temperature: float = Query(..., description="Temperatura de teste"),
-    humidity: float = Query(..., description="Umidade de teste")
+    temperature: float = Query(25.0, description="Temperatura de teste"),
+    humidity: float = Query(60.0, description="Umidade de teste")
 ):
     """
     Envia manualmente uma leitura ao ThingSpeak para teste.
