@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     
     # Thingspeak
     thingspeak_write_api_key: str
+    thingspeak_read_api_key: str
+    thingspeak_channel_id: str
     
     # IoT
     iot_api_key: str

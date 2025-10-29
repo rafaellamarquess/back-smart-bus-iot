@@ -25,7 +25,7 @@ async def get_analytics_summary(
         return summary
     
     except Exception as e:
-        logger.error(f"❌ Erro ao gerar resumo analytics: {e}")
+        logger.error(f"Erro ao gerar resumo analytics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/trends")
@@ -51,7 +51,7 @@ async def get_trends_analysis(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Erro ao analisar tendências: {e}")
+        logger.error(f"Erro ao analisar tendências: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/data-quality")
@@ -68,7 +68,7 @@ async def get_data_quality_report(db: AsyncIOMotorDatabase = Depends(get_db)):
         return quality_report
     
     except Exception as e:
-        logger.error(f"❌ Erro ao gerar relatório de qualidade: {e}")
+        logger.error(f"Erro ao gerar relatório de qualidade: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/pipeline-stats")
@@ -80,11 +80,10 @@ async def get_pipeline_statistics(db: AsyncIOMotorDatabase = Depends(get_db)):
     outliers detectados e performance geral.
     """
     try:
-        # Para demonstrar as estatísticas, vamos criar uma instância temporária
         repository = MongoDataRepository(db)
         pipeline = SensorETLPipeline(repository)
         
-        # Note: Em uma implementação real, estas estatísticas seriam
+        # Nota: Em uma implementação real, estas estatísticas seriam
         # mantidas em um singleton ou cache para persistir entre requests
         stats = pipeline.get_stats()
         
@@ -100,16 +99,13 @@ async def get_pipeline_statistics(db: AsyncIOMotorDatabase = Depends(get_db)):
         }
     
     except Exception as e:
-        logger.error(f"❌ Erro ao obter estatísticas do pipeline: {e}")
+        logger.error(f"Erro ao obter estatísticas do pipeline: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard")
 async def get_dashboard_data(db: AsyncIOMotorDatabase = Depends(get_db)):
     """
     Dados consolidados para dashboard principal.
-    
-    Combina métricas essenciais, tendências recentes e
-    status de qualidade dos dados em uma resposta única.
     """
     try:
         analytics_service = SensorAnalyticsService(db)
@@ -144,5 +140,5 @@ async def get_dashboard_data(db: AsyncIOMotorDatabase = Depends(get_db)):
         }
     
     except Exception as e:
-        logger.error(f"❌ Erro ao gerar dados do dashboard: {e}")
+        logger.error(f"Erro ao gerar dados do dashboard: {e}")
         raise HTTPException(status_code=500, detail=str(e))
