@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+API_ENDPOINTS_DOCUMENTATION.md
+BIG_DATA_PIPELINE.md

@@ -221,6 +221,11 @@ class SensorAnalyticsService(AnalyticsService):
             quality_result = await self.collection.aggregate(quality_pipeline).to_list(1)
             quality_stats = quality_result[0] if quality_result else {}
             
+            def safe_round(val, ndigits=2):
+                if val is None:
+                    return 0.0
+                return round(val, ndigits)
+
             return {
                 "generated_at": now.isoformat(),
                 "overview": {
@@ -229,9 +234,9 @@ class SensorAnalyticsService(AnalyticsService):
                     "data_freshness": "good" if recent_readings > 0 else "stale"
                 },
                 "data_quality": {
-                    "average_score": round(quality_stats.get('avg_quality_score', 0), 2),
-                    "minimum_score": round(quality_stats.get('min_quality_score', 0), 2),
-                    "maximum_score": round(quality_stats.get('max_quality_score', 0), 2)
+                    "average_score": safe_round(quality_stats.get('avg_quality_score', 0)),
+                    "minimum_score": safe_round(quality_stats.get('min_quality_score', 0)),
+                    "maximum_score": safe_round(quality_stats.get('max_quality_score', 0))
                 },
                 "validation_issues": {
                     "invalid_records": len(invalid_data),
