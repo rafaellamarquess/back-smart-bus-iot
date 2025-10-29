@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class MongoDataRepository(DataRepository):
     """Implementação concreta do repositório para MongoDB"""
     
-    def __init__(self, db: AsyncIOMotorDatabase):
+    def __init__(self, db):
         self.db = db
         self.collection = db.sensor_readings
     
@@ -33,16 +33,19 @@ class MongoDataRepository(DataRepository):
 class SensorETLPipeline(ETLPipeline):
     """Pipeline ETL específico para dados de sensores IoT"""
     
+    # Estatísticas globais do pipeline ETL
+    GLOBAL_STATS = {
+        'processed': 0,
+        'valid': 0,
+        'invalid': 0,
+        'outliers': 0
+    }
+
     def __init__(self, repository: DataRepository):
         self.repository = repository
         self.validator = SensorDataValidator()
         self.transformer = SensorDataTransformer()
-        self.stats = {
-            'processed': 0,
-            'valid': 0,
-            'invalid': 0,
-            'outliers': 0
-        }
+        self.stats = SensorETLPipeline.GLOBAL_STATS
     
     async def extract(self, source_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extrai e prepara dados da fonte (sensor IoT)"""
@@ -146,9 +149,10 @@ class SensorETLPipeline(ETLPipeline):
             }
     
     def get_stats(self) -> Dict[str, Any]:
-        """Retorna estatísticas do pipeline"""
+        """Retorna estatísticas globais do pipeline"""
+        stats = SensorETLPipeline.GLOBAL_STATS
         return {
-            **self.stats,
-            'success_rate': (self.stats['valid'] / self.stats['processed'] * 100) if self.stats['processed'] > 0 else 0,
-            'outlier_rate': (self.stats['outliers'] / self.stats['processed'] * 100) if self.stats['processed'] > 0 else 0
+            **stats,
+            'success_rate': (stats['valid'] / stats['processed'] * 100) if stats['processed'] > 0 else 0,
+            'outlier_rate': (stats['outliers'] / stats['processed'] * 100) if stats['processed'] > 0 else 0
         }

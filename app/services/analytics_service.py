@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class SensorAnalyticsService(AnalyticsService):
     """Serviço de analytics para dados de sensores IoT"""
     
-    def __init__(self, db: AsyncIOMotorDatabase):
+    def __init__(self, db):
         self.db = db
         self.collection = db.sensor_readings
     
@@ -113,8 +113,7 @@ class SensorAnalyticsService(AnalyticsService):
         """Detecta tendências nos dados dos últimos N dias"""
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(days=days)
-        
-        # Buscar dados agrupados por hora
+
         pipeline = [
             {
                 "$match": {
@@ -145,21 +144,37 @@ class SensorAnalyticsService(AnalyticsService):
             },
             {"$limit": max_points}
         ]
-        
+
         try:
             hourly_data = await self.collection.aggregate(pipeline).to_list(max_points)
-            
+
             if len(hourly_data) < 2:
-                return {"message": "Insufficient data for trend analysis"}
-            
-            # Extrair séries temporais
+                # Retornar objeto consistente para frontend
+                return {
+                    "period": {
+                        "start": start_time.isoformat(),
+                        "end": end_time.isoformat(),
+                        "days": days
+                    },
+                    "data_points": len(hourly_data),
+                    "temperature_trend": {
+                        "direction": "stable",
+                        "slope": 0.0,
+                        "interpretation": "No data available for trend analysis"
+                    },
+                    "humidity_trend": {
+                        "direction": "stable",
+                        "slope": 0.0,
+                        "interpretation": "No data available for trend analysis"
+                    }
+                }
+
             temperatures = [item['avg_temperature'] for item in hourly_data]
             humidities = [item['avg_humidity'] for item in hourly_data]
-            
-            # Calcular tendências usando regressão linear simples
+
             temp_trend = self._calculate_trend(temperatures)
             humidity_trend = self._calculate_trend(humidities)
-            
+
             return {
                 "period": {
                     "start": start_time.isoformat(),
@@ -178,10 +193,28 @@ class SensorAnalyticsService(AnalyticsService):
                     "interpretation": self._interpret_trend(humidity_trend, "humidity")
                 }
             }
-            
+
         except Exception as e:
             logger.error(f"Erro ao detectar tendências: {e}")
-            return {"error": str(e)}
+            return {
+                "period": {
+                    "start": start_time.isoformat(),
+                    "end": end_time.isoformat(),
+                    "days": days
+                },
+                "data_points": 0,
+                "temperature_trend": {
+                    "direction": "stable",
+                    "slope": 0.0,
+                    "interpretation": "No data available for trend analysis"
+                },
+                "humidity_trend": {
+                    "direction": "stable",
+                    "slope": 0.0,
+                    "interpretation": "No data available for trend analysis"
+                },
+                "error": str(e)
+            }
     
     async def get_data_quality_report(self) -> Dict[str, Any]:
         """Gera relatório de qualidade dos dados"""
