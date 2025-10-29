@@ -142,7 +142,7 @@ class SensorAnalyticsService(AnalyticsService):
                     "_id.day": 1,
                     "_id.hour": 1
                 }
-            }
+            },
             {"$limit": max_points}
         ]
         
