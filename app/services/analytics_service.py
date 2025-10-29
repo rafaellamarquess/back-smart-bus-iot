@@ -289,6 +289,8 @@ class SensorAnalyticsService(AnalyticsService):
         recommendations = []
         
         avg_quality = quality_stats.get('avg_quality_score', 100)
+        if avg_quality is None:
+            avg_quality = 0
         
         if avg_quality < 70:
             recommendations.append("Data quality is below acceptable levels. Consider reviewing sensor calibration.")
