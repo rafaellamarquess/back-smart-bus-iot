@@ -109,7 +109,7 @@ class SensorAnalyticsService(AnalyticsService):
             logger.error(f"Erro ao calcular agregações: {e}")
             return {"error": str(e)}
     
-    async def detect_trends(self, days: int = 7) -> Dict[str, Any]:
+    async def detect_trends(self, days: int = 7, max_points: int = 100) -> Dict[str, Any]:
         """Detecta tendências nos dados dos últimos N dias"""
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(days=days)
@@ -143,10 +143,11 @@ class SensorAnalyticsService(AnalyticsService):
                     "_id.hour": 1
                 }
             }
+            {"$limit": max_points}
         ]
         
         try:
-            hourly_data = await self.collection.aggregate(pipeline).to_list(None)
+            hourly_data = await self.collection.aggregate(pipeline).to_list(max_points)
             
             if len(hourly_data) < 2:
                 return {"message": "Insufficient data for trend analysis"}

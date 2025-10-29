@@ -31,20 +31,21 @@ async def get_analytics_summary(
 @router.get("/trends")
 async def get_trends_analysis(
     days: int = Query(7, description="Número de dias para análise de tendências"),
+    max_points: int = Query(100, description="Máximo de pontos retornados no gráfico"),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     Análise de tendências de temperatura e umidade.
-    
-    Detecta se os valores estão aumentando, diminuindo ou estáveis
-    ao longo do período especificado.
+    Limita o número de pontos retornados para evitar travamento do frontend.
     """
     try:
         if days < 1 or days > 90:
             raise HTTPException(status_code=400, detail="Days must be between 1 and 90")
+        if max_points < 10 or max_points > 1000:
+            raise HTTPException(status_code=400, detail="max_points must be between 10 and 1000")
         
         analytics_service = SensorAnalyticsService(db)
-        trends = await analytics_service.detect_trends(days)
+        trends = await analytics_service.detect_trends(days, max_points=max_points)
         return trends
     
     except HTTPException:
