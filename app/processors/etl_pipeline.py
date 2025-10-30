@@ -9,7 +9,7 @@ from app.processors.sensor_processor import SensorDataValidator, SensorDataTrans
 logger = logging.getLogger(__name__)
 
 class MongoDataRepository(DataRepository):
-    """Implementação concreta do repositório para MongoDB"""
+    """Implementação repositório para MongoDB"""
     
     def __init__(self, db):
         self.db = db
