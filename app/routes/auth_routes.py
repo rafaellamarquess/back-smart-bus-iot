@@ -8,7 +8,7 @@ import motor.motor_asyncio
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=dict)
-async def register(user: UserCreate, db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
+async def register(user: UserCreate, db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)): # type: ignore
     """Registra novo usuário"""
     db_user = await db["users"].find_one({"email": user.email})
     if db_user:
@@ -18,7 +18,7 @@ async def register(user: UserCreate, db: motor.motor_asyncio.AsyncIOMotorDatabas
     return {"msg": "User created", "user_id": user_id}
 
 @router.post("/login", response_model=Token)
-async def login(user_login: UserLogin, db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
+async def login(user_login: UserLogin, db: motor.motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)): # type: ignore
     """Login do usuário"""
     user = await authenticate_user(db["users"], user_login.email, user_login.password)
     if not user:
