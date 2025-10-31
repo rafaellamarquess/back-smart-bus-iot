@@ -80,7 +80,7 @@ async def get_thingspeak_data(
 ):
     """
     Busca dados do ThingSpeak APENAS se houver dados novos.
-    Impede duplicatas e processamento desnecessário.
+    Retorna no formato compatível com o frontend.
     """
     try:
         # 1. Buscar último entry_id já processado no banco
@@ -112,35 +112,47 @@ async def get_thingspeak_data(
                 except Exception as e:
                     logger.error(f"Erro ETL entry_id {item.get('entry_id')}: {e}")
 
+            # 5. Retornar dados no formato esperado pelo frontend
             return {
                 "status": "success",
-                "message": f"{processed_count} novos dados processados do ThingSpeak",
-                "new_records": len(new_data),
-                "last_processed_entry_id": max(item.get("entry_id", 0) for item in new_data),
-                "data": new_data[:3]  # Amostra
+                "message": f"{processed_count} novos dados processados",
+                "sample_data": data,  # Todos os dados para o gráfico
+                "latest_entry_id": max(item.get("entry_id", 0) for item in new_data)
             }
         else:
-            # 5. NENHUM dado novo - retornar última leitura SEM processar
-            latest = await db.sensor_readings.find_one({}, sort=[("recorded_at", -1)])
-            if latest:
-                latest["id"] = str(latest["_id"])
-                del latest["_id"]
-                return {
-                    "status": "no_new_data",
-                    "message": "Nenhum dado novo. Exibindo última leitura.",
-                    "last_processed_entry_id": last_entry_id,
-                    "latest_reading": latest
-                }
-            else:
-                return {
-                    "status": "no_data",
-                    "message": "Nenhum dado encontrado no ThingSpeak ou banco.",
-                    "records_found": 0
-                }
+            # 6. NENHUM dado novo - retornar dados existentes SEM processar
+            return {
+                "status": "no_new_data", 
+                "message": "Dados já processados. Exibindo últimos dados.",
+                "sample_data": data,  # Dados do ThingSpeak para exibição
+                "last_processed_entry_id": last_entry_id
+            }
 
     except Exception as e:
         logger.error(f"Erro ao buscar ThingSpeak: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        
+        # 7. FALLBACK: retornar última leitura do banco se ThingSpeak falhar
+        try:
+            latest = await db.sensor_readings.find_one({}, sort=[("recorded_at", -1)])
+            if latest:
+                # Converter formato do banco para formato ThingSpeak
+                fallback_data = [{
+                    "temperature": latest.get("temperature"),
+                    "humidity": latest.get("humidity"),
+                    "device_id": latest.get("device_id", "ESP32_FALLBACK"),
+                    "entry_id": latest.get("thingspeak_entry_id", 0),
+                    "thingspeak_created_at": latest.get("recorded_at").isoformat() if latest.get("recorded_at") else None
+                }]
+                
+                return {
+                    "status": "fallback",
+                    "message": "Usando dados do banco (ThingSpeak indisponível)",
+                    "sample_data": fallback_data
+                }
+        except:
+            pass
+            
+        raise HTTPException(status_code=500, detail="Erro ao acessar dados")
     
 
 @router.get("/readings")
